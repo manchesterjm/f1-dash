@@ -18,7 +18,7 @@ services:
       - ORIGIN=http://localhost:3000
 
   web:
-    image: ghcr.io/slowlydev/f1-dash:latest
+    image: f1-dash-web:smooth-map
     depends_on:
       - realtime
       - api

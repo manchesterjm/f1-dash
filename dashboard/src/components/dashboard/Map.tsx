@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 
 import type { PositionCar, TimingDataDriver } from "@/types/state.type";
@@ -25,11 +25,11 @@ import {
 const SPACE = 1000;
 const ROTATION_FIX = 90;
 
-// Function to calculate driver position based on their segment progress
-function getDriverPosition(
+// Function to calculate a driver's fractional index along the track points based on their segment progress
+function getDriverTrackIndex(
 	timingDriver: TimingDataDriver | undefined,
 	originalTrackPoints: { x: number; y: number }[] | null,
-): PositionCar | null {
+): number | null {
 	if (!timingDriver || !originalTrackPoints || originalTrackPoints.length === 0) {
 		return null;
 	}
@@ -39,12 +39,7 @@ function getDriverPosition(
 
 	if (allSegments.length === 0) {
 		// No segments available, position at start/finish line
-		return {
-			Status: "OnTrack",
-			X: originalTrackPoints[0].x,
-			Y: originalTrackPoints[0].y,
-			Z: 0,
-		};
+		return 0;
 	}
 
 	// Find the furthest segment with a meaningful status
@@ -58,19 +53,11 @@ function getDriverPosition(
 		}
 	}
 
-	// If no completed segments found, check for any segment with status 0 (current segment)
+	// No completed segment: either the very start of a session, or the just-crossed-the-line reset
+	// (a new lap zeroes every segment). Report "unknown" rather than snapping the car to the start
+	// line — the playback buffer keeps the dot moving until the new lap's first checkpoint lands.
 	if (furthestSegmentIndex === -1) {
-		for (let i = 0; i < allSegments.length; i++) {
-			if (allSegments[i].Status !== undefined) {
-				furthestSegmentIndex = i;
-				break;
-			}
-		}
-	}
-
-	// Still no segments found, default to start
-	if (furthestSegmentIndex === -1) {
-		furthestSegmentIndex = 0;
+		return null;
 	}
 
 	// Calculate position index based on segment progress
@@ -83,19 +70,111 @@ function getDriverPosition(
 	const segmentSize = 1 / Math.max(allSegments.length, 1);
 	const adjustedRatio = baseRatio + segmentProgress * segmentSize;
 
-	const positionIndex = Math.floor(adjustedRatio * (originalTrackPoints.length - 1));
+	const positionIndex = adjustedRatio * (originalTrackPoints.length - 1);
 
 	// Ensure we don't go out of bounds
-	const safeIndex = Math.min(Math.max(positionIndex, 0), originalTrackPoints.length - 1);
+	return Math.min(Math.max(positionIndex, 0), originalTrackPoints.length - 1);
+}
 
-	const trackPoint = originalTrackPoints[safeIndex];
+// Smallest signed distance from one track index to another, treating the lap as a loop.
+// Positive = forward along the racing direction; small negative values allow estimate corrections.
+function signedTrackDelta(from: number, to: number, trackLength: number): number {
+	const raw = (((to - from) % trackLength) + trackLength) % trackLength;
+	return raw <= trackLength / 2 ? raw : raw - trackLength;
+}
+
+// Point on the track polyline at a fractional index, interpolated between neighbouring points.
+function pointAtTrackIndex(index: number, trackPoints: { x: number; y: number }[]): PositionCar {
+	const wrapped = (((index % trackPoints.length) + trackPoints.length) % trackPoints.length);
+	const lower = Math.floor(wrapped);
+	const upper = (lower + 1) % trackPoints.length;
+	const alpha = wrapped - lower;
+
+	const a = trackPoints[lower];
+	const b = trackPoints[upper];
 
 	return {
 		Status: "OnTrack",
-		X: trackPoint.x,
-		Y: trackPoint.y,
+		X: a.x + (b.x - a.x) * alpha,
+		Y: a.y + (b.y - a.y) * alpha,
 		Z: 0,
 	};
+}
+
+// Along-track playback: segment-progress checkpoints are buffered with timestamps and replayed
+// PLAYBACK_LAG_MS behind now, moving dots between checkpoints at their true measured pace.
+const PLAYBACK_LAG_MS = 4000;
+const MAX_EXTRAPOLATION_MS = 6000;
+const SAMPLE_RETENTION_MS = 30000;
+
+type TrackSample = { time: number; cumulativeIndex: number };
+
+function pace(from: TrackSample, to: TrackSample): number {
+	return (to.cumulativeIndex - from.cumulativeIndex) / Math.max(to.time - from.time, 1);
+}
+
+// Monotonicity-preserving (Fritsch-Butland) pace at a checkpoint, from its neighbouring secants.
+// Keeps the interpolated motion free of overshoot and backwards wiggle.
+function monotonePace(
+	previous: TrackSample | undefined,
+	current: TrackSample,
+	next: TrackSample | undefined,
+): number {
+	if (!previous) return next ? pace(current, next) : 0;
+	if (!next) return pace(previous, current);
+
+	const paceIn = pace(previous, current);
+	const paceOut = pace(current, next);
+	if (paceIn * paceOut <= 0) return 0;
+
+	const spanIn = current.time - previous.time;
+	const spanOut = next.time - current.time;
+	const weightIn = 2 * spanOut + spanIn;
+	const weightOut = spanOut + 2 * spanIn;
+
+	return (weightIn + weightOut) / (weightIn / paceIn + weightOut / paceOut);
+}
+
+// Cumulative (lap-unwrapped) track index at a moment in time: monotone cubic through the buffered
+// checkpoints (pace varies smoothly instead of stepping at each checkpoint); briefly extrapolates
+// at the recent pace when playback catches up to the newest one.
+function indexAtTime(samples: TrackSample[], time: number): number {
+	if (time <= samples[0].time) return samples[0].cumulativeIndex;
+
+	for (let i = samples.length - 1; i >= 0; i--) {
+		if (samples[i].time > time) continue;
+
+		const current = samples[i];
+		const next = samples[i + 1];
+
+		if (next) {
+			const span = next.time - current.time;
+			if (span <= 0) return next.cumulativeIndex;
+
+			const paceAtCurrent = monotonePace(samples[i - 1], current, next);
+			const paceAtNext = monotonePace(current, next, samples[i + 2]);
+
+			const s = (time - current.time) / span;
+			const s2 = s * s;
+			const s3 = s2 * s;
+
+			return (
+				current.cumulativeIndex * (2 * s3 - 3 * s2 + 1) +
+				span * paceAtCurrent * (s3 - 2 * s2 + s) +
+				next.cumulativeIndex * (-2 * s3 + 3 * s2) +
+				span * paceAtNext * (s3 - s2)
+			);
+		}
+
+		const previous = samples[i - 1];
+		if (!previous) return current.cumulativeIndex;
+
+		const recentPace = pace(previous, current);
+		const extrapolatedMs = Math.min(time - current.time, MAX_EXTRAPOLATION_MS);
+		return current.cumulativeIndex + Math.max(recentPace, 0) * extrapolatedMs;
+	}
+
+	return samples[0].cumulativeIndex;
 }
 
 type Corner = {
@@ -128,6 +207,46 @@ export default function Map({ filter }: Props) {
 	const [rotation, setRotation] = useState<number>(0);
 	const [finishLine, setFinishLine] = useState<null | { x: number; y: number; startAngle: number }>(null);
 	const [originalTrackPoints, setOriginalTrackPoints] = useState<null | { x: number; y: number }[]>(null);
+
+	// Along-track dot playback: checkpoint samples per driver, rendered PLAYBACK_LAG_MS behind now
+	const trackSamplesRef = useRef<Record<string, TrackSample[]>>({});
+	// Forward-only guard: a data correction may pause a dot, but never drag it backwards
+	const renderedIndexRef = useRef<Record<string, number>>({});
+	const [, setAnimationFrame] = useState<number>(0);
+
+	useEffect(() => {
+		if (!originalTrackPoints) return;
+
+		let rafId: number;
+
+		const step = () => {
+			setAnimationFrame((frame) => frame + 1);
+			rafId = requestAnimationFrame(step);
+		};
+
+		rafId = requestAnimationFrame(step);
+		return () => cancelAnimationFrame(rafId);
+	}, [originalTrackPoints]);
+
+	const recordTrackSample = (racingNumber: string, targetIndex: number, trackLength: number): TrackSample[] => {
+		const now = performance.now();
+		const samples = trackSamplesRef.current[racingNumber] ?? [{ time: now, cumulativeIndex: targetIndex }];
+		trackSamplesRef.current[racingNumber] = samples;
+
+		const newest = samples[samples.length - 1];
+		const newestWrapped = ((newest.cumulativeIndex % trackLength) + trackLength) % trackLength;
+		const delta = signedTrackDelta(newestWrapped, targetIndex, trackLength);
+
+		if (Math.abs(delta) > 1e-6) {
+			samples.push({ time: now, cumulativeIndex: newest.cumulativeIndex + delta });
+
+			while (samples.length > 2 && samples[0].time < now - SAMPLE_RETENTION_MS) {
+				samples.shift();
+			}
+		}
+
+		return samples;
+	};
 
 	useEffect(() => {
 		(async () => {
@@ -286,10 +405,24 @@ export default function Map({ filter }: Props) {
 								: false;
 							const pit = timingDriver ? timingDriver.InPit : false;
 
-							const driverPosition = getDriverPosition(timingDriver, originalTrackPoints);
+							const targetIndex = getDriverTrackIndex(timingDriver, originalTrackPoints);
+
+							// During the new-lap segment reset the target is unknown; keep playing the buffer
+							const samples =
+								targetIndex !== null && originalTrackPoints
+									? recordTrackSample(driver.RacingNumber, targetIndex, originalTrackPoints.length)
+									: trackSamplesRef.current[driver.RacingNumber];
 
 							// Skip rendering if we can't determine position
-							if (!driverPosition) return null;
+							if (!samples || !originalTrackPoints) return null;
+
+							const playbackIndex = indexAtTime(samples, performance.now() - PLAYBACK_LAG_MS);
+							const forwardOnlyIndex = Math.max(
+								playbackIndex,
+								renderedIndexRef.current[driver.RacingNumber] ?? playbackIndex,
+							);
+							renderedIndexRef.current[driver.RacingNumber] = forwardOnlyIndex;
+							const driverPosition = pointAtTrackIndex(forwardOnlyIndex, originalTrackPoints);
 
 							return (
 								<CarDot
@@ -349,7 +482,7 @@ const CarDot = ({ pos, name, color, favoriteDriver, pit, hidden, rotation, cente
 		<g
 			className={clsx("fill-zinc-700", { "opacity-30": pit }, { "opacity-0!": hidden })}
 			style={{
-				transition: "all 1s linear",
+				transition: "opacity 1s linear",
 				transform,
 				...(color && { fill: `#${color}` }),
 			}}
