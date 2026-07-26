@@ -25,12 +25,69 @@ import {
 const SPACE = 1000;
 const ROTATION_FIX = 90;
 
+// The track polyline is NOT evenly spaced: consecutive points sit anywhere from 1 to 190 units apart
+// (over 3x the median at every circuit checked). Treating a point index as if it were proportional to
+// distance therefore misplaces a car by up to ~200 m at the Hungaroring and ~570 m at Spa. Everything
+// positional goes through lap fraction — real arc length — instead of raw index.
+type TrackGeometry = {
+	// Arc length from the start/finish line to each polyline point, plus the full lap.
+	cumulative: number[];
+	total: number;
+	// True mini-sector boundaries as polyline indices, when the circuit publishes them.
+	boundaries: number[] | null;
+};
+
+function buildTrackGeometry(
+	points: { x: number; y: number }[],
+	boundaries: number[] | null,
+): TrackGeometry {
+	const cumulative: number[] = [0];
+
+	for (let i = 1; i < points.length; i++) {
+		cumulative.push(cumulative[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
+	}
+
+	const last = points[points.length - 1];
+	const total = cumulative[cumulative.length - 1] + Math.hypot(points[0].x - last.x, points[0].y - last.y);
+
+	return { cumulative, total, boundaries };
+}
+
+// Fractional polyline index at a given fraction of the lap measured by distance.
+function trackIndexAtLapFraction(fraction: number, geometry: TrackGeometry): number {
+	const { cumulative, total } = geometry;
+	const target = (((fraction % 1) + 1) % 1) * total;
+
+	let low = 0;
+	let high = cumulative.length - 1;
+
+	while (low < high) {
+		const mid = Math.floor((low + high + 1) / 2);
+		if (cumulative[mid] <= target) low = mid;
+		else high = mid - 1;
+	}
+
+	const spanStart = cumulative[low];
+	const spanEnd = low + 1 < cumulative.length ? cumulative[low + 1] : total;
+	const span = spanEnd - spanStart;
+
+	return span > 0 ? low + (target - spanStart) / span : low;
+}
+
+// Lap fraction of a polyline index, by distance. Used to place the true boundaries.
+function lapFractionAtTrackIndex(index: number, geometry: TrackGeometry): number {
+	const { cumulative, total } = geometry;
+	const wrapped = ((Math.floor(index) % cumulative.length) + cumulative.length) % cumulative.length;
+	return total > 0 ? cumulative[wrapped] / total : 0;
+}
+
 // Function to calculate a driver's fractional index along the track points based on their segment progress
 function getDriverTrackIndex(
 	timingDriver: TimingDataDriver | undefined,
 	originalTrackPoints: { x: number; y: number }[] | null,
+	geometry: TrackGeometry | null,
 ): number | null {
-	if (!timingDriver || !originalTrackPoints || originalTrackPoints.length === 0) {
+	if (!timingDriver || !originalTrackPoints || originalTrackPoints.length === 0 || !geometry) {
 		return null;
 	}
 
@@ -60,24 +117,36 @@ function getDriverTrackIndex(
 		return null;
 	}
 
-	// Each mini-sector spans an equal 1/N of the lap, so segment i starts at i/N — not i/(N-1), which
-	// stretches the field over the lap and places a car progressively later within its own segment as
-	// the lap runs on (exact at the start, a full segment late by the last one). Checked against
-	// gap-derived separations on a live race: i/N cut the pairwise RMS error from 227 m to 197 m,
-	// i.e. down to the ~199 m mini-sector quantisation floor itself.
-	//
 	// There is no sub-segment information to add. The feed only ever reports Status 0, 2048, 2049 or
 	// 2064, so the upstream `=== 1` "in progress" test could never fire. Nor does the feed settle
 	// whether a lit segment means the car entered it or completed it, so the car is placed at the
-	// segment MIDPOINT: at most half a segment out under either reading, where committing to a
-	// boundary would be a full segment out under one of them.
+	// MIDPOINT of the mini-sector: at most half a mini-sector out under either reading, where
+	// committing to a boundary would be a full one out under one of them.
+	//
+	// The equal-division fallback uses i/N rather than the original i/(N-1), which stretched the field
+	// over the lap and placed a car progressively later within its own segment as the lap ran on.
+	// Checked against gap-derived separations on a live race, i/N cut the pairwise RMS error from
+	// 227 m to 197 m — down to the mini-sector quantisation floor itself.
 	const segmentCount = Math.max(allSegments.length, 1);
-	const adjustedRatio = (furthestSegmentIndex + 0.5) / segmentCount;
+	const { boundaries } = geometry;
 
-	const positionIndex = adjustedRatio * (originalTrackPoints.length - 1);
+	// Mini-sectors are not equal in length, so when the circuit publishes its real boundaries AND there
+	// are as many of them as the feed reports segments, use them: the car sits midway between the
+	// boundary it last lit and the next one. Otherwise fall back to an equal division of the lap BY
+	// DISTANCE, which is still far better than an equal division of the point index.
+	const useRealBoundaries = boundaries !== null && boundaries.length === segmentCount;
 
-	// Ensure we don't go out of bounds
-	return Math.min(Math.max(positionIndex, 0), originalTrackPoints.length - 1);
+	if (useRealBoundaries) {
+		const here = lapFractionAtTrackIndex(boundaries[furthestSegmentIndex], geometry);
+		const nextBoundary = boundaries[(furthestSegmentIndex + 1) % boundaries.length];
+		const next = lapFractionAtTrackIndex(nextBoundary, geometry);
+		// The last mini-sector wraps past the start/finish line.
+		const span = next > here ? next - here : next + 1 - here;
+
+		return trackIndexAtLapFraction(here + span / 2, geometry);
+	}
+
+	return trackIndexAtLapFraction((furthestSegmentIndex + 0.5) / segmentCount, geometry);
 }
 
 // Gap-based along-track refinement.
@@ -122,13 +191,14 @@ type GapReference = {
 function buildGapReference(
 	timingLines: Record<string, TimingDataDriver> | undefined,
 	trackPoints: { x: number; y: number }[] | null,
+	geometry: TrackGeometry | null,
 ): GapReference | null {
-	if (!timingLines || !trackPoints) return null;
+	if (!timingLines || !trackPoints || !geometry) return null;
 
 	const leader = Object.values(timingLines).find((line) => line.Position === "1");
 	if (!leader) return null;
 
-	const leaderIndex = getDriverTrackIndex(leader, trackPoints);
+	const leaderIndex = getDriverTrackIndex(leader, trackPoints, geometry);
 	if (leaderIndex === null) return null;
 
 	const lapSeconds = lapTimeSeconds(leader.LastLapTime?.Value);
@@ -189,6 +259,45 @@ function pointAtTrackIndex(index: number, trackPoints: { x: number; y: number }[
 		Y: a.y + (b.y - a.y) * alpha,
 		Z: 0,
 	};
+}
+
+// Tick marks at the mini-sector boundaries, drawn across the track so the checkpoints the dots step
+// between are visible. Uses the circuit's published boundaries where they exist — mini-sectors are
+// markedly unequal in length — and an equal division by distance where they don't.
+const MINI_SECTOR_TICK_WIDTH = 300;
+
+type TickMark = { from: TrackPosition; to: TrackPosition };
+
+function miniSectorTicks(
+	segmentCount: number,
+	trackPoints: { x: number; y: number }[],
+	geometry: TrackGeometry,
+): TickMark[] {
+	// Prefer the circuit's published boundaries — mini-sectors are markedly unequal, so an even
+	// division only ever approximates them. Falls back to an equal division by distance.
+	const indexes =
+		geometry.boundaries ??
+		Array.from({ length: segmentCount }, (_, boundary) =>
+			trackIndexAtLapFraction(boundary / segmentCount, geometry),
+		);
+
+	return indexes.map((index) => {
+		const here = pointAtTrackIndex(index, trackPoints);
+		const ahead = pointAtTrackIndex(index + 1, trackPoints);
+
+		const runX = ahead.X - here.X;
+		const runY = ahead.Y - here.Y;
+		const run = Math.hypot(runX, runY) || 1;
+
+		// Perpendicular to the racing direction, centred on the track line.
+		const acrossX = (-runY / run) * (MINI_SECTOR_TICK_WIDTH / 2);
+		const acrossY = (runX / run) * (MINI_SECTOR_TICK_WIDTH / 2);
+
+		return {
+			from: { x: here.X - acrossX, y: here.Y - acrossY },
+			to: { x: here.X + acrossX, y: here.Y + acrossY },
+		};
+	});
 }
 
 // Along-track playback: segment-progress checkpoints are buffered with timestamps and replayed
@@ -279,6 +388,7 @@ type Props = {
 
 export default function Map({ filter }: Props) {
 	const showCornerNumbers = useSettingsStore((state) => state.showCornerNumbers);
+	const showMiniSectorTicks = useSettingsStore((state) => state.showMiniSectorTicks);
 	const favoriteDrivers = useSettingsStore((state) => state.favoriteDrivers);
 
 	// const positions = useDataStore((state) => state.positions);
@@ -297,6 +407,7 @@ export default function Map({ filter }: Props) {
 	const [rotation, setRotation] = useState<number>(0);
 	const [finishLine, setFinishLine] = useState<null | { x: number; y: number; startAngle: number }>(null);
 	const [originalTrackPoints, setOriginalTrackPoints] = useState<null | { x: number; y: number }[]>(null);
+	const [trackGeometry, setTrackGeometry] = useState<null | TrackGeometry>(null);
 
 	// Along-track dot playback: checkpoint samples per driver, rendered PLAYBACK_LAG_MS behind now
 	const trackSamplesRef = useRef<Record<string, TrackSample[]>>({});
@@ -396,13 +507,31 @@ export default function Map({ filter }: Props) {
 			setCorners(cornerPositions);
 			setFinishLine({ x: rotatedFinishLine.x, y: rotatedFinishLine.y, startAngle });
 			setOriginalTrackPoints(originalPoints);
+			setTrackGeometry(buildTrackGeometry(originalPoints, mapJson.miniSectorsIndexes ?? null));
 		})();
 	}, [circuitKey]);
 
 	const yellowSectors = useMemo(() => findYellowSectors(raceControlMessages), [raceControlMessages]);
 
 	// Recomputed each frame so the anchor tracks the leader; it is one find plus one index calc.
-	const gapReference = buildGapReference(timingDrivers?.Lines, originalTrackPoints);
+	const gapReference = buildGapReference(timingDrivers?.Lines, originalTrackPoints, trackGeometry);
+
+	// Taken from the feed rather than hardcoded — the count varies by circuit.
+	const miniSectorCount = timingDrivers
+		? Object.values(timingDrivers.Lines).reduce(
+				(most, line) =>
+					Math.max(most, line.Sectors?.reduce((count, sector) => count + sector.Segments.length, 0) ?? 0),
+				0,
+			)
+		: 0;
+
+	const miniSectorTickMarks = useMemo(
+		() =>
+			showMiniSectorTicks && originalTrackPoints && trackGeometry && miniSectorCount > 0
+				? miniSectorTicks(miniSectorCount, originalTrackPoints, trackGeometry)
+				: [],
+		[showMiniSectorTicks, originalTrackPoints, trackGeometry, miniSectorCount],
+	);
 
 	const renderedSectors = useMemo(() => {
 		const status = getTrackStatusMessage(trackStatus?.Status ? parseInt(trackStatus.Status) : undefined);
@@ -463,6 +592,26 @@ export default function Map({ filter }: Props) {
 				);
 			})}
 
+			{centerX !== null &&
+				centerY !== null &&
+				miniSectorTickMarks.map((tick, index) => {
+					const from = rotate(tick.from.x, tick.from.y, rotation, centerX, centerY);
+					const to = rotate(tick.to.x, tick.to.y, rotation, centerX, centerY);
+
+					return (
+						<line
+							key={`map.minisector.${index}`}
+							className="stroke-zinc-500"
+							x1={from.x}
+							y1={from.y}
+							x2={to.x}
+							y2={to.y}
+							strokeWidth={30}
+							strokeLinecap="round"
+						/>
+					);
+				})}
+
 			{finishLine && (
 				<rect
 					x={finishLine.x - 75}
@@ -498,7 +647,7 @@ export default function Map({ filter }: Props) {
 								: false;
 							const pit = timingDriver ? timingDriver.InPit : false;
 
-							const segmentIndex = getDriverTrackIndex(timingDriver, originalTrackPoints);
+							const segmentIndex = getDriverTrackIndex(timingDriver, originalTrackPoints, trackGeometry);
 
 							// Segment progress says roughly where the car is; the gap says it precisely.
 							const targetIndex =

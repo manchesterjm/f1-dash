@@ -2,6 +2,9 @@ export type Map = {
 	corners: Corner[];
 	marshalLights: Corner[];
 	marshalSectors: Corner[];
+	// Polyline indices of the circuit's true mini-sector boundaries. Absent on some circuits, and
+	// the count does not always equal the number of segments the timing feed reports.
+	miniSectorsIndexes?: number[];
 	candidateLap: CandidateLap;
 	circuitKey: number;
 	circuitName: string;
