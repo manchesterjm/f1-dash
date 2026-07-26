@@ -1,5 +1,7 @@
 import clsx from "clsx";
 
+import { countryFor, flagFor } from "@/lib/driverFlags";
+
 type Props = {
 	teamColor: string;
 	short: string;
@@ -8,6 +10,8 @@ type Props = {
 };
 
 export default function DriverTag({ position, teamColor, short, className }: Props) {
+	const flag = flagFor(short);
+
 	return (
 		<div
 			id="walkthrough-driver-position"
@@ -18,6 +22,12 @@ export default function DriverTag({ position, teamColor, short, className }: Pro
 			style={{ backgroundColor: `#${teamColor}` }}
 		>
 			{position && <p className="px-1 text-xl leading-none">{position}</p>}
+
+			{flag && (
+				<span className="text-base leading-none" title={countryFor(short)}>
+					{flag}
+				</span>
+			)}
 
 			<div className="flex h-min w-min items-center justify-center rounded-md bg-white px-1">
 				<p className="font-mono text-zinc-500" style={{ ...(teamColor && { color: `#${teamColor}` }) }}>

@@ -94,7 +94,7 @@ const TrackMapDriver = ({ position, driver, timingDriver }: TrackMapDriverProps)
 			<div
 				className="grid items-center gap-2"
 				style={{
-					gridTemplateColumns: "5.5rem 3.5rem 4rem 5rem 5rem",
+					gridTemplateColumns: "6.5rem 3.5rem 4rem 5rem 5rem",
 				}}
 			>
 				<DriverTag className="min-w-full!" short={driver.Tla} teamColor={driver.TeamColour} position={position} />
