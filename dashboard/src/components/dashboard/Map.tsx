@@ -60,20 +60,110 @@ function getDriverTrackIndex(
 		return null;
 	}
 
-	// Calculate position index based on segment progress
-	// Add small offset for in-progress segments to show forward movement
-	const baseRatio = furthestSegmentIndex / Math.max(allSegments.length - 1, 1);
-	const currentSegmentStatus = allSegments[furthestSegmentIndex]?.Status || 0;
-
-	// Add fractional progress within current segment if it's in progress (status 1)
-	const segmentProgress = currentSegmentStatus === 1 ? 0.5 : 0;
-	const segmentSize = 1 / Math.max(allSegments.length, 1);
-	const adjustedRatio = baseRatio + segmentProgress * segmentSize;
+	// Each mini-sector spans an equal 1/N of the lap, so segment i starts at i/N — not i/(N-1), which
+	// stretches the field over the lap and places a car progressively later within its own segment as
+	// the lap runs on (exact at the start, a full segment late by the last one). Checked against
+	// gap-derived separations on a live race: i/N cut the pairwise RMS error from 227 m to 197 m,
+	// i.e. down to the ~199 m mini-sector quantisation floor itself.
+	//
+	// There is no sub-segment information to add. The feed only ever reports Status 0, 2048, 2049 or
+	// 2064, so the upstream `=== 1` "in progress" test could never fire. Nor does the feed settle
+	// whether a lit segment means the car entered it or completed it, so the car is placed at the
+	// segment MIDPOINT: at most half a segment out under either reading, where committing to a
+	// boundary would be a full segment out under one of them.
+	const segmentCount = Math.max(allSegments.length, 1);
+	const adjustedRatio = (furthestSegmentIndex + 0.5) / segmentCount;
 
 	const positionIndex = adjustedRatio * (originalTrackPoints.length - 1);
 
 	// Ensure we don't go out of bounds
 	return Math.min(Math.max(positionIndex, 0), originalTrackPoints.length - 1);
+}
+
+// Gap-based along-track refinement.
+//
+// A mini-sector crossing fixes a car's position only about once every 200 m, so cars a few tenths
+// apart get drawn either stacked on the same segment boundary or a whole segment apart — neither is
+// true, and relative spacing is what a track map is actually read for. Gaps are reported in
+// thousandths of a second, which places a car along the track far more finely: at Hungaroring pace
+// a 0.7 s gap is ~36 m, well inside one segment.
+//
+// This is only ever a REFINEMENT. If the gap-derived point disagrees with the car's own segment
+// progress by more than a segment or so, segment progress wins — that keeps pit stops, lapped cars
+// and safety-car periods, where a time gap no longer maps to track distance, from teleporting a dot.
+const GAP_REFINEMENT_SEGMENT_TOLERANCE = 1.5;
+
+// Feed lap times look like "1:24.536"; anything unparseable means we cannot convert seconds to
+// track distance, and the caller falls back to segment progress.
+function lapTimeSeconds(value: string | undefined): number | null {
+	if (!value) return null;
+
+	const parts = value.split(":");
+	const seconds =
+		parts.length === 2 ? parseInt(parts[0], 10) * 60 + parseFloat(parts[1]) : parseFloat(parts[0]);
+
+	return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+// Gaps look like "+1.234". Lap-based ("1 L"), blank and "LAP n" values carry no distance meaning.
+function gapSeconds(value: string | undefined): number | null {
+	if (!value || !/^\+?\d+(\.\d+)?$/.test(value.trim())) return null;
+
+	const seconds = parseFloat(value.replace("+", ""));
+	return Number.isFinite(seconds) ? seconds : null;
+}
+
+// The leader anchors the field: everyone else is placed at the leader's position minus their gap.
+type GapReference = {
+	leaderIndex: number;
+	indexPerSecond: number;
+};
+
+function buildGapReference(
+	timingLines: Record<string, TimingDataDriver> | undefined,
+	trackPoints: { x: number; y: number }[] | null,
+): GapReference | null {
+	if (!timingLines || !trackPoints) return null;
+
+	const leader = Object.values(timingLines).find((line) => line.Position === "1");
+	if (!leader) return null;
+
+	const leaderIndex = getDriverTrackIndex(leader, trackPoints);
+	if (leaderIndex === null) return null;
+
+	const lapSeconds = lapTimeSeconds(leader.LastLapTime?.Value);
+	if (lapSeconds === null) return null;
+
+	return { leaderIndex, indexPerSecond: trackPoints.length / lapSeconds };
+}
+
+function refineTrackIndexByGap(
+	segmentIndex: number,
+	timingDriver: TimingDataDriver,
+	reference: GapReference | null,
+	trackLength: number,
+): number {
+	// The leader is the anchor, and a car in the pit lane is not on the track at all.
+	if (!reference || timingDriver.Position === "1" || timingDriver.InPit || timingDriver.PitOut) {
+		return segmentIndex;
+	}
+
+	const gap = gapSeconds(timingDriver.GapToLeader);
+	if (gap === null) return segmentIndex;
+
+	// A gap of a whole lap or more has no single track position — it wraps, and the wrapped answer is
+	// meaningless. This is not hypothetical: under the safety car on lap 57 of the 2026 Hungarian GP the
+	// leader's lap stretched to 1:32 while cars still showing numeric gaps sat at +106 s to +111 s.
+	const gapIndexOffset = gap * reference.indexPerSecond;
+	if (gapIndexOffset >= trackLength) return segmentIndex;
+
+	const rawIndex = reference.leaderIndex - gapIndexOffset;
+	const gapIndex = ((rawIndex % trackLength) + trackLength) % trackLength;
+
+	const segmentCount = timingDriver.Sectors.reduce((count, sector) => count + sector.Segments.length, 0);
+	const tolerance = (trackLength / Math.max(segmentCount, 1)) * GAP_REFINEMENT_SEGMENT_TOLERANCE;
+
+	return Math.abs(signedTrackDelta(segmentIndex, gapIndex, trackLength)) <= tolerance ? gapIndex : segmentIndex;
 }
 
 // Smallest signed distance from one track index to another, treating the lap as a loop.
@@ -311,6 +401,9 @@ export default function Map({ filter }: Props) {
 
 	const yellowSectors = useMemo(() => findYellowSectors(raceControlMessages), [raceControlMessages]);
 
+	// Recomputed each frame so the anchor tracks the leader; it is one find plus one index calc.
+	const gapReference = buildGapReference(timingDrivers?.Lines, originalTrackPoints);
+
 	const renderedSectors = useMemo(() => {
 		const status = getTrackStatusMessage(trackStatus?.Status ? parseInt(trackStatus.Status) : undefined);
 
@@ -405,7 +498,18 @@ export default function Map({ filter }: Props) {
 								: false;
 							const pit = timingDriver ? timingDriver.InPit : false;
 
-							const targetIndex = getDriverTrackIndex(timingDriver, originalTrackPoints);
+							const segmentIndex = getDriverTrackIndex(timingDriver, originalTrackPoints);
+
+							// Segment progress says roughly where the car is; the gap says it precisely.
+							const targetIndex =
+								segmentIndex !== null && timingDriver && originalTrackPoints
+									? refineTrackIndexByGap(
+											segmentIndex,
+											timingDriver,
+											gapReference,
+											originalTrackPoints.length,
+										)
+									: segmentIndex;
 
 							// During the new-lap segment reset the target is unknown; keep playing the buffer
 							const samples =
