@@ -1,6 +1,11 @@
 import type { Map } from "@/types/map.type";
 
-export const fetchMap = async (circuitKey: number): Promise<Map | null> => {
+import { fallbackMap } from "@/lib/fallbackMaps";
+
+export const fetchMap = async (circuitKey: number): Promise<Map | null> =>
+	(await fetchMultiViewerMap(circuitKey)) ?? fallbackMap(circuitKey);
+
+const fetchMultiViewerMap = async (circuitKey: number): Promise<Map | null> => {
 	try {
 		const year = new Date().getFullYear();
 

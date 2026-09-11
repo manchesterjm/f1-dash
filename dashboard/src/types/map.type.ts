@@ -5,7 +5,8 @@ export type Map = {
 	// Polyline indices of the circuit's true mini-sector boundaries. Absent on some circuits, and
 	// the count does not always equal the number of segments the timing feed reports.
 	miniSectorsIndexes?: number[];
-	candidateLap: CandidateLap;
+	// The car lap MultiViewer traced the outline from. Absent on locally built fallback maps.
+	candidateLap?: CandidateLap;
 	circuitKey: number;
 	circuitName: string;
 	countryIocCode: string;
