@@ -12,10 +12,12 @@ import DelayTimer from "@/components/DelayTimer";
 import Toggle from "@/components/ui/Toggle";
 
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useReplayActive } from "@/stores/useCarMotionStore";
 import Footer from "@/components/Footer";
 
 export default function SettingsPage() {
 	const settings = useSettingsStore();
+	const replaying = useReplayActive();
 	return (
 		<div>
 			<h1 className="mb-4 text-3xl">Settings</h1>
@@ -118,11 +120,15 @@ export default function SettingsPage() {
 				the settings. It can be found in the most top bar on the right side.
 			</p>
 
-			<div className="flex items-center gap-2">
-				<DelayTimer />
-				<DelayInput />
-				<p className="text-zinc-500">Delay in seconds</p>
-			</div>
+			{replaying ? (
+				<p className="text-zinc-500">The delay does not apply during a replay - use the replay bar instead.</p>
+			) : (
+				<div className="flex items-center gap-2">
+					<DelayTimer />
+					<DelayInput />
+					<p className="text-zinc-500">Delay in seconds</p>
+				</div>
+			)}
 
 			<Button className="mt-2 bg-red-500!" onClick={() => settings.setDelay(0)}>
 				Reset delay

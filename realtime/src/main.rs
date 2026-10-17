@@ -6,6 +6,7 @@ use tracing::warn;
 use crate::services::state_service::StateService;
 
 mod f1;
+mod f1_login;
 mod http_server;
 mod services {
     pub mod state_service;

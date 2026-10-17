@@ -7,6 +7,8 @@ export type Map = {
 	miniSectorsIndexes?: number[];
 	// The car lap MultiViewer traced the outline from. Absent on locally built fallback maps.
 	candidateLap?: CandidateLap;
+	// Pit-lane centreline in the same frame as x/y. Only locally built fallback maps carry one.
+	pitLane?: { x: number[]; y: number[] };
 	circuitKey: number;
 	circuitName: string;
 	countryIocCode: string;

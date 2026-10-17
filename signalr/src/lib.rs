@@ -30,7 +30,10 @@ struct Negotiation {
     cookie: String,
 }
 
-async fn negotiate(base_url: &str) -> Result<Negotiation, anyhow::Error> {
+async fn negotiate(
+    base_url: &str,
+    access_token: Option<&str>,
+) -> Result<Negotiation, anyhow::Error> {
     let negotiate_url = format!("https://{}/negotiate", base_url);
     let client = reqwest::Client::new();
 
@@ -51,6 +54,9 @@ async fn negotiate(base_url: &str) -> Result<Negotiation, anyhow::Error> {
     let mut req = client.post(url);
     if !cookie.is_empty() {
         req = req.header(header::COOKIE, &cookie);
+    }
+    if let Some(token) = access_token {
+        req = req.bearer_auth(token);
     }
 
     let res = req.send().await?;
@@ -85,8 +91,14 @@ pub struct SignalrClient {
     pub stream: WsStream,
 }
 
-pub async fn create_client(base_url: &str, _hub: &str) -> Result<SignalrClient, anyhow::Error> {
-    let negotiation = negotiate(base_url).await?;
+/// Connects to the hub. `access_token` is an optional bearer token (F1 TV subscription) sent on
+/// both the negotiate request and the websocket upgrade.
+pub async fn create_client(
+    base_url: &str,
+    _hub: &str,
+    access_token: Option<&str>,
+) -> Result<SignalrClient, anyhow::Error> {
+    let negotiation = negotiate(base_url, access_token).await?;
 
     let mut ws_url = Url::parse(&format!("wss://{}", base_url))?;
     if let Some(ref token) = negotiation.connection_token {
@@ -111,6 +123,11 @@ pub async fn create_client(base_url: &str, _hub: &str) -> Result<SignalrClient, 
     if !negotiation.cookie.is_empty() {
         headers.insert(header::COOKIE, negotiation.cookie.parse()?);
     }
+    if let Some(token) = access_token {
+        let mut authorization = HeaderValue::from_str(&format!("Bearer {token}"))?;
+        authorization.set_sensitive(true);
+        headers.insert(header::AUTHORIZATION, authorization);
+    }
 
     let (mut stream, res) = tokio_tungstenite::connect_async(req).await?;
     debug!(?res, "ws connected");
@@ -125,7 +142,7 @@ pub async fn create_client(base_url: &str, _hub: &str) -> Result<SignalrClient, 
 
     match &handshake_response {
         Message::Text(txt) => {
-            let msg = deserialize::<Value>(&txt);
+            let msg = deserialize::<Value>(txt);
 
             match msg {
                 Ok(parsed) => {

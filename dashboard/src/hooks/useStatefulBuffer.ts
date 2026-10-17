@@ -15,8 +15,15 @@ export const useStatefulBuffer = <T>() => {
 		if (currentRef.current) buffer.push(currentRef.current);
 	};
 
+	// Forget everything merged so far - a replay jumping backwards must not keep later data.
+	const reset = () => {
+		currentRef.current = null;
+		buffer.reset();
+	};
+
 	return {
 		push,
+		reset,
 		latest: buffer.latest,
 		delayed: buffer.delayed,
 		cleanup: buffer.cleanup,

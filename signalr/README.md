@@ -21,7 +21,7 @@ use signalr::{create_client, subscribe, listen};
 const URL: &str = "livetiming.formula1.com/signalr";
 const HUB: &str = "Streaming";
 
-let mut client = create_client(URL, HUB).await?;
+let mut client = create_client(URL, HUB, None).await?;
 
 let topics = &["Heartbeat", "TimingData", "DriverList"];
 let initial_state = subscribe(&mut client, topics).await?;
@@ -40,7 +40,7 @@ while let Some(updates) = stream.next().await {
 ```rust
 use signalr::{create_client, subscribe, listen_raw};
 
-let mut client = create_client(URL, HUB).await?;
+let mut client = create_client(URL, HUB, None).await?;
 let _ = subscribe(&mut client, topics).await?;
 
 // Get raw WebSocket messages as strings
@@ -53,7 +53,7 @@ while let Some(raw_message) = stream.next().await {
 
 ## Functions
 
-- `create_client(url, hub)` - Establishes a SignalR WebSocket connection
+- `create_client(url, hub, access_token)` - Establishes a SignalR WebSocket connection (optional bearer token, e.g. an F1 TV subscription token)
 - `subscribe(client, topics)` - Subscribes to specified topics, returns initial state
 - `listen(client)` - Returns a stream of parsed `UpdateArgs` structs
 - `listen_raw(client)` - Returns a stream of raw JSON strings

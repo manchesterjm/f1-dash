@@ -8,6 +8,7 @@ import clsx from "clsx";
 
 import { useSidebarStore } from "@/stores/useSidebarStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useReplayActive } from "@/stores/useCarMotionStore";
 
 import ConnectionStatus from "@/components/ConnectionStatus";
 import DelayInput from "@/components/DelayInput";
@@ -56,6 +57,7 @@ export default function Sidebar({ connected }: Props) {
 	const unpin = useSidebarStore((state) => state.unpin);
 
 	const oledMode = useSettingsStore((state) => state.oledMode);
+	const replaying = useReplayActive();
 
 	useEffect(() => {
 		const handleResize = () => {
@@ -104,8 +106,8 @@ export default function Sidebar({ connected }: Props) {
 				>
 					<div className="flex items-center justify-between gap-2">
 						<div className="flex items-center gap-2">
-							<DelayInput saveDelay={500} />
-							<DelayTimer />
+							{!replaying && <DelayInput saveDelay={500} />}
+							{!replaying && <DelayTimer />}
 
 							<ConnectionStatus connected={connected} />
 						</div>

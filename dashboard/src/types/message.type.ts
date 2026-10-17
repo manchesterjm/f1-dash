@@ -9,8 +9,8 @@ export type RecursivePartial<T> = {
 };
 
 type FullState = State & {
-	CarDataZ?: string;
-	PositionZ?: string;
+	"CarData.z"?: string;
+	"Position.z"?: string;
 };
 
 export type MessageUpdate = RecursivePartial<FullState>;

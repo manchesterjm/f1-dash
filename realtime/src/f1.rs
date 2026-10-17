@@ -4,7 +4,7 @@ use tokio::sync::broadcast::Sender;
 use tokio_stream::StreamExt;
 use tracing::{error, trace, warn};
 
-use crate::services::state_service::StateService;
+use crate::{f1_login, services::state_service::StateService};
 
 const URL: &str = "livetiming.formula1.com/signalrcore";
 const HUB: &str = "Streaming";
@@ -33,7 +33,8 @@ pub async fn ingest_f1(
     state_service: StateService,
     update_sender: Sender<String>,
 ) -> Result<(), Error> {
-    let mut client = signalr::create_client(URL, HUB).await?;
+    let access_token = f1_login::subscription_token();
+    let mut client = signalr::create_client(URL, HUB, access_token.as_deref()).await?;
 
     let initial = signalr::subscribe(&mut client, &TOPICS).await?;
     state_service.set_state(initial).await?;

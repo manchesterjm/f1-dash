@@ -15,6 +15,8 @@ import { useStatefulBuffer } from "@/hooks/useStatefulBuffer";
 
 const UPDATE_MS = 200;
 
+export type FeedTimeMapper = (feedMs: number) => number;
+
 type Props = {
 	updateState: (state: State) => void;
 	updatePosition: (pos: Positions) => void;
@@ -55,7 +57,22 @@ export const useDataEngine = ({ updateState, updatePosition, updateCarData }: Pr
 
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-	const handleInitial = ({ CarDataZ: carZ, PositionZ: posZ, ...initial }: MessageInitial) => {
+	// A replay re-times F1's car/position timestamps onto its own playback clock; live passes them through.
+	const feedTimeRef = useRef<FeedTimeMapper | null>(null);
+	const toLocalMs = (utc: string) => {
+		const feedMs = utcToLocalMs(utc);
+		return feedTimeRef.current ? feedTimeRef.current(feedMs) : feedMs;
+	};
+
+	const setFeedTimeMapper = (mapper: FeedTimeMapper | null) => (feedTimeRef.current = mapper);
+
+	const reset = () => {
+		Object.values(buffers).forEach((buffer) => buffer.reset());
+		carBuffer.reset();
+		posBuffer.reset();
+	};
+
+	const handleInitial = ({ "CarData.z": carZ, "Position.z": posZ, ...initial }: MessageInitial) => {
 		updateState(initial);
 
 		Object.keys(buffers).forEach((key) => {
@@ -69,7 +86,7 @@ export const useDataEngine = ({ updateState, updatePosition, updateCarData }: Pr
 			updateCarData(carData.Entries[0].Cars);
 
 			for (const entry of carData.Entries) {
-				carBuffer.pushTimed(entry.Cars, utcToLocalMs(entry.Utc));
+				carBuffer.pushTimed(entry.Cars, toLocalMs(entry.Utc));
 			}
 		}
 
@@ -78,12 +95,12 @@ export const useDataEngine = ({ updateState, updatePosition, updateCarData }: Pr
 			updatePosition(position.Position[0].Entries);
 
 			for (const entry of position.Position) {
-				posBuffer.pushTimed(entry.Entries, utcToLocalMs(entry.Timestamp));
+				posBuffer.pushTimed(entry.Entries, toLocalMs(entry.Timestamp));
 			}
 		}
 	};
 
-	const handleUpdate = ({ CarDataZ: carZ, PositionZ: posZ, ...update }: MessageUpdate) => {
+	const handleUpdate = ({ "CarData.z": carZ, "Position.z": posZ, ...update }: MessageUpdate) => {
 		Object.keys(buffers).forEach((key) => {
 			const data = update[key as keyof typeof update];
 			const buffer = buffers[key as keyof typeof buffers];
@@ -93,20 +110,21 @@ export const useDataEngine = ({ updateState, updatePosition, updateCarData }: Pr
 		if (carZ) {
 			const carData = inflate<CarData>(carZ);
 			for (const entry of carData.Entries) {
-				carBuffer.pushTimed(entry.Cars, utcToLocalMs(entry.Utc));
+				carBuffer.pushTimed(entry.Cars, toLocalMs(entry.Utc));
 			}
 		}
 
 		if (posZ) {
 			const position = inflate<Position>(posZ);
 			for (const entry of position.Position) {
-				posBuffer.pushTimed(entry.Entries, utcToLocalMs(entry.Timestamp));
+				posBuffer.pushTimed(entry.Entries, toLocalMs(entry.Timestamp));
 			}
 		}
 	};
 
 	const handleCurrentState = () => {
-		const delay = delayRef.current;
+		// A replay sets its own time with the replay bar; the live-TV delay would only blank the screen.
+		const delay = feedTimeRef.current ? 0 : delayRef.current;
 
 		if (delay === 0) {
 			const newStateFrame: Record<string, State[keyof State]> = {};
@@ -174,5 +192,7 @@ export const useDataEngine = ({ updateState, updatePosition, updateCarData }: Pr
 		handleUpdate,
 		handleInitial,
 		maxDelay,
+		reset,
+		setFeedTimeMapper,
 	};
 };

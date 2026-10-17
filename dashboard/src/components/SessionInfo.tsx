@@ -4,6 +4,7 @@ import { utc, duration } from "moment";
 
 import { useDataStore } from "@/stores/useDataStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useReplayActive } from "@/stores/useCarMotionStore";
 
 import Flag from "@/components/Flag";
 
@@ -23,7 +24,8 @@ export default function SessionInfo() {
 	const session = useDataStore((state) => state.state?.SessionInfo);
 	const timingData = useDataStore((state) => state.state?.TimingData);
 
-	const delay = useSettingsStore((state) => state.delay);
+	const savedDelay = useSettingsStore((state) => state.delay);
+	const delay = useReplayActive() ? 0 : savedDelay;
 
 	const timeRemaining =
 		!!clock && !!clock.Remaining

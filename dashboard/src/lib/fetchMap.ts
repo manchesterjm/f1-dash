@@ -1,9 +1,11 @@
 import type { Map } from "@/types/map.type";
 
-import { fallbackMap } from "@/lib/fallbackMaps";
+import { fallbackMap, withPitLane } from "@/lib/fallbackMaps";
 
-export const fetchMap = async (circuitKey: number): Promise<Map | null> =>
-	(await fetchMultiViewerMap(circuitKey)) ?? fallbackMap(circuitKey);
+export const fetchMap = async (circuitKey: number): Promise<Map | null> => {
+	const map = (await fetchMultiViewerMap(circuitKey)) ?? fallbackMap(circuitKey);
+	return map && withPitLane(map);
+};
 
 const fetchMultiViewerMap = async (circuitKey: number): Promise<Map | null> => {
 	try {

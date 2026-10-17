@@ -54,7 +54,7 @@ pub async fn save(path: &Path) -> Result<(), Error> {
 
     info!("Connecting to F1 SignalR...");
 
-    let mut signalr_client = signalr::create_client(URL, HUB).await?;
+    let mut signalr_client = signalr::create_client(URL, HUB, None).await?;
 
     info!("Subscribing to topics...");
 

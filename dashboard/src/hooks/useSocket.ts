@@ -7,12 +7,16 @@ import { env } from "@/env";
 type Props = {
 	handleInitial: (data: MessageInitial) => void;
 	handleUpdate: (data: MessageUpdate) => void;
+	// False while a replay owns the dashboard (or while we are still finding out).
+	enabled?: boolean;
 };
 
-export const useSocket = ({ handleInitial, handleUpdate }: Props) => {
+export const useSocket = ({ handleInitial, handleUpdate, enabled = true }: Props) => {
 	const [connected, setConnected] = useState<boolean>(false);
 
 	useEffect(() => {
+		if (!enabled) return;
+
 		const sse = new EventSource(`${env.NEXT_PUBLIC_LIVE_URL}/api/realtime`);
 
 		sse.onerror = () => setConnected(false);
@@ -26,9 +30,12 @@ export const useSocket = ({ handleInitial, handleUpdate }: Props) => {
 			handleUpdate(JSON.parse(message.data));
 		});
 
-		return () => sse.close();
+		return () => {
+			sse.close();
+			setConnected(false);
+		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+	}, [enabled]);
 
 	return { connected };
 };
