@@ -71,7 +71,7 @@ export default function RadioMessage({ driver, capture, basePath, gmtOffset }: P
 		});
 	};
 
-	const favoriteDriver = useSettingsStore((state) => state.favoriteDrivers.includes(driver.RacingNumber));
+	const favoriteDriver = useSettingsStore((state) => state.favoriteDrivers.includes(driver.Tla));
 
 	const localTime = utc(capture.Utc).local().format("HH:mm:ss");
 	const trackTime = utc(toTrackTime(capture.Utc, gmtOffset)).format("HH:mm");

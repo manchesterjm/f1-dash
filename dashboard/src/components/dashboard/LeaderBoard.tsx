@@ -2,6 +2,8 @@ import { AnimatePresence, LayoutGroup } from "motion/react";
 import clsx from "clsx";
 
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useFeedHasDrs } from "@/hooks/useFeedHasDrs";
+import { leaderboardColumns } from "@/lib/leaderboardColumns";
 import { useDataStore } from "@/stores/useDataStore";
 
 import { sortPos } from "@/lib/sorting";
@@ -43,18 +45,17 @@ export default function LeaderBoard() {
 
 const TableHeaders = () => {
 	const carMetrics = useSettingsStore((state) => state.carMetrics);
+	const showDrs = useFeedHasDrs();
 
 	return (
 		<div
 			className="grid items-center gap-2 p-1 px-2 text-sm font-medium text-zinc-500"
 			style={{
-				gridTemplateColumns: carMetrics
-					? "6.5rem 3.5rem 5.5rem 4rem 5rem 5.5rem auto 10.5rem"
-					: "6.5rem 3.5rem 5.5rem 4rem 5rem 5.5rem auto",
+				gridTemplateColumns: leaderboardColumns({ showDrs, carMetrics }),
 			}}
 		>
 			<p>Position</p>
-			<p>DRS</p>
+			{showDrs && <p>DRS</p>}
 			<p>Tire</p>
 			<p>Info</p>
 			<p>Gap</p>

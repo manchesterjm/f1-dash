@@ -217,7 +217,8 @@ export type Sector = {
 	Status: number;
 	OverallFastest: boolean;
 	PersonalFastest: boolean;
-	Segments: {
+	// Absent before mini-sectors reached the feed (the 2018 archive has none).
+	Segments?: {
 		Status: number;
 	}[];
 };

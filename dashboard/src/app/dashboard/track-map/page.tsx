@@ -9,12 +9,14 @@ import DriverDRS from "@/components/driver/DriverDRS";
 import DriverInfo from "@/components/driver/DriverInfo";
 import DriverGap from "@/components/driver/DriverGap";
 import DriverLapTime from "@/components/driver/DriverLapTime";
+import DriverTire from "@/components/driver/DriverTire";
 
 import { sortPos } from "@/lib/sorting";
 
 import { useDataStore } from "@/stores/useDataStore";
 import type { Driver, TimingDataDriver } from "@/types/state.type";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useFeedHasDrs } from "@/hooks/useFeedHasDrs";
 
 export default function TrackMap() {
 	const drivers = useDataStore((state) => state.state?.DriverList);
@@ -79,7 +81,8 @@ const TrackMapDriver = ({ position, driver, timingDriver }: TrackMapDriverProps)
 
 	const carData = useDataStore((state) => (state?.carsData ? state.carsData[driver.RacingNumber].Channels : undefined));
 
-	const favoriteDriver = useSettingsStore((state) => state.favoriteDrivers.includes(driver.RacingNumber));
+	const favoriteDriver = useSettingsStore((state) => state.favoriteDrivers.includes(driver.Tla));
+	const showDrs = useFeedHasDrs();
 
 	return (
 		<motion.div
@@ -94,16 +97,19 @@ const TrackMapDriver = ({ position, driver, timingDriver }: TrackMapDriverProps)
 			<div
 				className="grid items-center gap-2"
 				style={{
-					gridTemplateColumns: "6.5rem 3.5rem 4rem 5rem 5rem",
+					gridTemplateColumns: showDrs ? "6.5rem 3.5rem 5.5rem 4rem 5rem 5rem" : "6.5rem 5.5rem 4rem 5rem 5rem",
 				}}
 			>
 				<DriverTag className="min-w-full!" short={driver.Tla} teamColor={driver.TeamColour} position={position} />
-				<DriverDRS
-					on={carData ? hasDRS(carData[45]) : false}
-					possible={carData ? possibleDRS(carData[45]) : false}
-					inPit={timingDriver.InPit}
-					pitOut={timingDriver.PitOut}
-				/>
+				{showDrs && (
+					<DriverDRS
+						on={carData ? hasDRS(carData[45]) : false}
+						possible={carData ? possibleDRS(carData[45]) : false}
+						inPit={timingDriver.InPit}
+						pitOut={timingDriver.PitOut}
+					/>
+				)}
+				<DriverTire stints={appTimingDriver?.Stints} />
 				<DriverInfo timingDriver={timingDriver} gridPos={appTimingDriver ? parseInt(appTimingDriver.GridPos) : 0} />
 				<DriverGap timingDriver={timingDriver} sessionPart={sessionPart} />
 				<DriverLapTime last={timingDriver.LastLapTime} best={timingDriver.BestLapTime} hasFastest={hasFastest} />

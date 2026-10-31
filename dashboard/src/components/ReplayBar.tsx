@@ -3,6 +3,7 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
 import { useReplayPlayer, type ReplayTarget } from "@/hooks/useReplayPlayer";
+import type { ReplayPlace } from "@/lib/replay/replayBookmark";
 import { runningSpanLabel, type ReplaySession } from "@/lib/replay/replaySession";
 
 import LiveButton from "@/components/LiveButton";
@@ -13,6 +14,8 @@ const KEY_STEP_SECONDS = 10;
 type Props = {
 	session: ReplaySession;
 	target: ReplayTarget;
+	resume: ReplayPlace | null;
+	onPlace: (place: ReplayPlace) => void;
 	onLive: () => void;
 };
 
@@ -33,8 +36,8 @@ const positionText = (session: ReplaySession, offset: number) => {
 	return next >= 0 ? `before ${runningSpanLabel(session, next)}` : "finished";
 };
 
-export default function ReplayBar({ session, target, onLive }: Props) {
-	const { offset, playing, speed, play, pause, seek, setSpeed } = useReplayPlayer(session, target);
+export default function ReplayBar({ session, target, resume, onPlace, onLive }: Props) {
+	const { offset, playing, speed, play, pause, seek, setSpeed } = useReplayPlayer(session, target, resume, onPlace);
 
 	const trackRef = useRef<HTMLDivElement>(null);
 	const [dragging, setDragging] = useState<number | null>(null);

@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: Props) {
 		dataStore.setPositions(null);
 		dataStore.setCarsData(null);
 	};
-	const { source, startReplay, goLive } = useReplaySession(clearDashboard);
+	const { source, startReplay, goLive, keepPlace } = useReplaySession(clearDashboard);
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const openPicker = () => setPickerOpen(true);
 	const addLivePositions = useLiveMotion(source.mode === 'live');
@@ -81,6 +81,8 @@ export default function DashboardLayout({ children }: Props) {
 							key={source.name}
 							session={source.session}
 							target={{ handleInitial, handleUpdate, reset, setFeedTimeMapper }}
+							resume={source.resume}
+							onPlace={(place) => keepPlace(source.name, place)}
 							onLive={goLive}
 						/>
 					) : (

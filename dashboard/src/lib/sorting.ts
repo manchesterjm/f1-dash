@@ -7,12 +7,12 @@ export const sortPos = (a: PosObject, b: PosObject) => {
 
 type PosObjectQuali = {
 	Sectors: {
-		Segments: { Status: number }[];
+		Segments?: { Status: number }[];
 	}[];
 };
 export const sortQuali = (a: PosObjectQuali, b: PosObjectQuali) => {
-	const aPassed = a.Sectors.flatMap((sector) => sector.Segments).filter((s) => s.Status > 0);
-	const bPassed = b.Sectors.flatMap((sector) => sector.Segments).filter((s) => s.Status > 0);
+	const aPassed = a.Sectors.flatMap((sector) => sector.Segments ?? []).filter((s) => s.Status > 0);
+	const bPassed = b.Sectors.flatMap((sector) => sector.Segments ?? []).filter((s) => s.Status > 0);
 
 	return bPassed.length - aPassed.length;
 };

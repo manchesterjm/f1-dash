@@ -40,6 +40,11 @@ export default function SettingsPage() {
 			</div>
 
 			<div className="flex gap-2">
+				<Toggle enabled={settings.showSatellite} setEnabled={(v) => settings.setShowSatellite(v)} />
+				<p className="text-zinc-500">Show Satellite Imagery under Track Map</p>
+			</div>
+
+			<div className="flex gap-2">
 				<Toggle enabled={settings.tableHeaders} setEnabled={(v) => settings.setTableHeaders(v)} />
 				<p className="text-zinc-500">Show Driver Table Header</p>
 			</div>

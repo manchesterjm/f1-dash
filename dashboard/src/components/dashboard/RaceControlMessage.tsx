@@ -6,6 +6,7 @@ import clsx from "clsx";
 import type { Message } from "@/types/state.type";
 
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useDataStore } from "@/stores/useDataStore";
 
 import { toTrackTime } from "@/lib/toTrackTime";
 
@@ -20,7 +21,8 @@ const getDriverNumber = (msg: Message) => {
 };
 
 export function RaceControlMessage({ msg, gmtOffset }: Props) {
-	const favoriteDriver = useSettingsStore((state) => state.favoriteDrivers.includes(getDriverNumber(msg) ?? ""));
+	const driverCode = useDataStore((state) => state.state?.DriverList?.[getDriverNumber(msg) ?? ""]?.Tla);
+	const favoriteDriver = useSettingsStore((state) => !!driverCode && state.favoriteDrivers.includes(driverCode));
 
 	const localTime = utc(msg.Utc).local().format("HH:mm:ss");
 	const trackTime = utc(toTrackTime(msg.Utc, gmtOffset)).format("HH:mm");

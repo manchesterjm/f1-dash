@@ -21,7 +21,8 @@ export type Map = {
 	raceDate: string;
 	rotation: number;
 	round: number;
-	trackPositionTime: number[];
+	// Seconds into candidateLap at each x/y point. Absent on some circuits (Yas Marina).
+	trackPositionTime?: number[];
 	x: number[];
 	y: number[];
 	year: number;

@@ -7,6 +7,8 @@ import type { Driver, TimingDataDriver } from "@/types/state.type";
 
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useDataStore } from "@/stores/useDataStore";
+import { useFeedHasDrs } from "@/hooks/useFeedHasDrs";
+import { leaderboardColumns } from "@/lib/leaderboardColumns";
 
 import DriverTag from "./DriverTag";
 import DriverDRS from "./DriverDRS";
@@ -48,8 +50,9 @@ export default function Driver({ driver, timingDriver, position }: Props) {
 	const hasFastest = timingStatsDriver?.PersonalBestLapTime.Position == 1;
 
 	const carMetrics = useSettingsStore((state) => state.carMetrics);
+	const showDrs = useFeedHasDrs();
 
-	const favoriteDriver = useSettingsStore((state) => state.favoriteDrivers.includes(driver.RacingNumber));
+	const favoriteDriver = useSettingsStore((state) => state.favoriteDrivers.includes(driver.Tla));
 
 	return (
 		<motion.div
@@ -64,18 +67,18 @@ export default function Driver({ driver, timingDriver, position }: Props) {
 			<div
 				className="grid items-center gap-2"
 				style={{
-					gridTemplateColumns: carMetrics
-						? "6.5rem 3.5rem 5.5rem 4rem 5rem 5.5rem auto 10.5rem"
-						: "6.5rem 3.5rem 5.5rem 4rem 5rem 5.5rem auto",
+					gridTemplateColumns: leaderboardColumns({ showDrs, carMetrics }),
 				}}
 			>
 				<DriverTag className="min-w-full!" short={driver.Tla} teamColor={driver.TeamColour} position={position} />
-				<DriverDRS
-					on={carData ? hasDRS(carData[45]) : false}
-					possible={carData ? possibleDRS(carData[45]) : false}
-					inPit={timingDriver.InPit}
-					pitOut={timingDriver.PitOut}
-				/>
+				{showDrs && (
+					<DriverDRS
+						on={carData ? hasDRS(carData[45]) : false}
+						possible={carData ? possibleDRS(carData[45]) : false}
+						inPit={timingDriver.InPit}
+						pitOut={timingDriver.PitOut}
+					/>
+				)}
 				<DriverTire stints={appTimingDriver?.Stints} />
 				<DriverInfo timingDriver={timingDriver} gridPos={appTimingDriver ? parseInt(appTimingDriver.GridPos) : 0} />
 				<DriverGap timingDriver={timingDriver} sessionPart={sessionPart} />

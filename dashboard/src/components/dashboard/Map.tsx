@@ -11,9 +11,11 @@ import { useCarMotionStore } from "@/stores/useCarMotionStore";
 import { parseLapTime } from "@/lib/replay/carMotion";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { getTrackStatusMessage } from "@/lib/getTrackStatusMessage";
+import SatelliteBackdrop from "@/components/dashboard/SatelliteBackdrop";
 import {
 	BUBBLE_HEIGHT,
 	BUBBLE_LINE_PITCH,
+	BUBBLE_RISE,
 	BUBBLE_WIDTH,
 	layOutSpeedBubbles,
 	type BubbleAnchor,
@@ -32,6 +34,9 @@ import {
 // https://github.com/tdjsnelling/monaco
 
 const SPACE = 1000;
+// Room above the track's highest point for a favourite's bubble (its top edge, plus a gap), so a
+// bubble over a car on the topmost stretch is not cut off when the map fills the height available.
+const BUBBLE_HEADROOM = BUBBLE_RISE + BUBBLE_HEIGHT / 2 + 100;
 const ROTATION_FIX = 90;
 
 // The track polyline is NOT evenly spaced: consecutive points sit anywhere from 1 to 190 units apart
@@ -155,15 +160,34 @@ type SpeedBubbleElements = {
 	tail: SVGLineElement;
 	lap: SVGTextElement;
 	projected: SVGTextElement;
+	projectedTime: SVGTSpanElement;
+	delta: SVGTSpanElement;
 	value: SVGTSpanElement;
 };
 
-// The projected lap is green when it beats the driver's best lap, red when it does not.
+// The projected lap is green when it beats the driver's best lap, red when it does not; the delta beside it
+// uses the same pair against the session's fastest lap.
 const PROJECTED_FASTER = "fill-emerald-500";
 const PROJECTED_SLOWER = "fill-red-500";
 // Shown, greyed, while there is nothing to project (no lap time set yet, out-lap, pit).
 const NO_PROJECTION = "NO TIME";
 const NO_PROJECTION_TONE = "fill-zinc-500";
+
+// "−0.37" / "+1.20": projected lap minus the session's fastest lap, to the hundredth (minus = faster).
+function formatLapDelta(projectedMs: number, fastestMs: number): string {
+	const hundredths = Math.round((projectedMs - fastestMs) / 10);
+	const sign = hundredths < 0 ? "\u2212" : "+";
+	return `${sign}${(Math.abs(hundredths) / 100).toFixed(2)}`;
+}
+
+// The fastest lap anyone has set this session, or null before the first timed lap.
+function sessionFastestLapMs(): number | null {
+	const lines = useDataStore.getState().state?.TimingData?.Lines ?? {};
+	const bests = Object.values(lines)
+		.map((line) => parseLapTime(line?.BestLapTime?.Value))
+		.filter((ms): ms is number => ms !== null);
+	return bests.length > 0 ? Math.min(...bests) : null;
+}
 
 // "1:32.45": time into the current lap, to the hundredth.
 function formatLapTime(ms: number): string {
@@ -186,6 +210,7 @@ type Props = {
 export default function Map({ filter }: Props) {
 	const showCornerNumbers = useSettingsStore((state) => state.showCornerNumbers);
 	const showMiniSectorTicks = useSettingsStore((state) => state.showMiniSectorTicks);
+	const showSatellite = useSettingsStore((state) => state.showSatellite);
 	const favoriteDrivers = useSettingsStore((state) => state.favoriteDrivers);
 	const speedUnit = useSettingsStore((state) => state.speedUnit);
 
@@ -277,7 +302,7 @@ export default function Map({ filter }: Props) {
 			setCorners(cornerPositions);
 			setFinishLine({ x: rotatedFinishLine.x, y: rotatedFinishLine.y, startAngle });
 			setOriginalTrackPoints(originalPoints);
-			setLapPace({ seconds: mapJson.trackPositionTime, lapSeconds: mapJson.candidateLap?.lapTime ?? null });
+			setLapPace({ seconds: mapJson.trackPositionTime ?? [], lapSeconds: mapJson.candidateLap?.lapTime ?? null });
 			setTrackGeometry(buildTrackGeometry(originalPoints, mapJson.miniSectorsIndexes ?? null));
 		})();
 	}, [circuitKey]);
@@ -306,7 +331,7 @@ export default function Map({ filter }: Props) {
 	// Taken from the feed rather than hardcoded — the count varies by circuit.
 	const miniSectorCount = timingDrivers
 		? Object.values(timingDrivers.Lines).reduce(
-				(most, line) => Math.max(most, line.Sectors?.reduce((count, sector) => count + sector.Segments.length, 0) ?? 0),
+				(most, line) => Math.max(most, line.Sectors?.reduce((count, sector) => count + (sector.Segments?.length ?? 0), 0) ?? 0),
 				0,
 			)
 		: 0;
@@ -363,6 +388,7 @@ export default function Map({ filter }: Props) {
 		function placeSpeedBubbles(anchors: BubbleAnchor[], now: number) {
 			const metric = useSettingsStore.getState().speedUnit === "metric";
 			const placed = new Set<string>();
+			const fastestMs = sessionFastestLapMs();
 			for (const { driver, x, y } of layOutSpeedBubbles(anchors)) {
 				const elements = speedBubbles.current.get(driver);
 				const anchor = anchors.find((a) => a.driver === driver);
@@ -384,7 +410,16 @@ export default function Map({ filter }: Props) {
 				const officialBest = parseLapTime(useDataStore.getState().state?.TimingData?.Lines[driver]?.BestLapTime?.Value);
 				const projection = lapMs === null ? null : motion!.projectedLapAt(driver, now, officialBest);
 				const projected = projection ? formatLapTime(projection.projectedMs) : NO_PROJECTION;
-				if (elements.projected.textContent !== projected) elements.projected.textContent = projected;
+				if (elements.projectedTime.textContent !== projected) elements.projectedTime.textContent = projected;
+				const fastestTarget = projection ? (fastestMs ?? projection.bestMs) : null;
+				const delta = projection && fastestTarget !== null ? formatLapDelta(projection.projectedMs, fastestTarget) : "";
+				if (elements.delta.textContent !== delta) elements.delta.textContent = delta;
+				// The delta has its own colour: green when the lap is on course to beat the session's fastest.
+				const deltaTone =
+					projection && fastestTarget !== null && projection.projectedMs < fastestTarget
+						? PROJECTED_FASTER
+						: PROJECTED_SLOWER;
+				if (elements.delta.getAttribute("class") !== deltaTone) elements.delta.setAttribute("class", deltaTone);
 				const tone = !projection
 					? NO_PROJECTION_TONE
 					: projection.projectedMs < projection.bestMs
@@ -410,12 +445,27 @@ export default function Map({ filter }: Props) {
 		);
 	}
 
+	const extraTop = favoriteDrivers.length > 0 ? Math.max(0, BUBBLE_HEADROOM - SPACE) : 0;
+
 	return (
 		<svg
-			viewBox={`${minX} ${minY} ${widthX} ${widthY}`}
+			viewBox={`${minX} ${minY - extraTop} ${widthX} ${widthY + extraTop}`}
 			className="h-full w-full xl:max-h-screen"
 			xmlns="http://www.w3.org/2000/svg"
 		>
+			{showSatellite && circuitKey && centerX !== null && centerY !== null && (
+				<SatelliteBackdrop
+					circuitKey={circuitKey}
+					rotation={rotation}
+					centerX={centerX}
+					centerY={centerY}
+					minX={minX}
+					minY={minY - extraTop}
+					width={widthX}
+					height={widthY + extraTop}
+				/>
+			)}
+
 			<path
 				className="stroke-gray-800"
 				strokeWidth={300}
@@ -518,7 +568,7 @@ export default function Map({ filter }: Props) {
 							return (
 								<CarDot
 									key={`map.driver.${driver.RacingNumber}`}
-									favoriteDriver={favoriteDrivers.length > 0 ? favoriteDrivers.includes(driver.RacingNumber) : false}
+									favoriteDriver={favoriteDrivers.length > 0 ? favoriteDrivers.includes(driver.Tla) : false}
 									name={driver.Tla}
 									color={driver.TeamColour}
 									pit={pit}
@@ -539,7 +589,7 @@ export default function Map({ filter }: Props) {
 					{/* After every dot, so a bubble is never hidden under another car. */}
 					{motion &&
 						Object.values(drivers)
-							.filter((driver) => favoriteDrivers.includes(driver.RacingNumber))
+							.filter((driver) => favoriteDrivers.includes(driver.Tla))
 							.filter((driver) => (filter ? filter.includes(driver.RacingNumber) : true))
 							.filter((driver) => {
 								const timingDriver = timingDrivers?.Lines[driver.RacingNumber];
@@ -650,16 +700,28 @@ const SpeedBubble = ({ color, unit, elementsRef }: SpeedBubbleProps) => {
 	const tail = useRef<SVGLineElement>(null);
 	const lap = useRef<SVGTextElement>(null);
 	const projected = useRef<SVGTextElement>(null);
+	const projectedTime = useRef<SVGTSpanElement>(null);
+	const delta = useRef<SVGTSpanElement>(null);
 	const value = useRef<SVGTSpanElement>(null);
 	const stroke = color ? `#${color}` : "#a1a1aa";
 
 	useEffect(() => {
-		if (bubble.current && tail.current && lap.current && projected.current && value.current) {
+		if (
+			bubble.current &&
+			tail.current &&
+			lap.current &&
+			projected.current &&
+			projectedTime.current &&
+			delta.current &&
+			value.current
+		) {
 			elementsRef({
 				bubble: bubble.current,
 				tail: tail.current,
 				lap: lap.current,
 				projected: projected.current,
+				projectedTime: projectedTime.current,
+				delta: delta.current,
 				value: value.current,
 			});
 		}
@@ -693,16 +755,18 @@ const SpeedBubble = ({ color, unit, elementsRef }: SpeedBubbleProps) => {
 					fontSize={260}
 					style={{ fontVariantNumeric: "tabular-nums" }}
 				/>
-				{/* The map sets its colour along with its text. */}
+				{/* The map sets its colour along with its text: the time against the driver's own best, the delta against the session's fastest. */}
 				<text
 					ref={projected}
 					textAnchor="middle"
 					dominantBaseline="central"
 					className={NO_PROJECTION_TONE}
 					fontWeight="bold"
-					fontSize={260}
 					style={{ fontVariantNumeric: "tabular-nums" }}
-				/>
+				>
+					<tspan ref={projectedTime} fontSize={260} />
+					<tspan ref={delta} fontSize={190} dx={60} />
+				</text>
 				<text
 					y={BUBBLE_LINE_PITCH}
 					textAnchor="middle"

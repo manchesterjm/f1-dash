@@ -2,7 +2,10 @@ import type { Map } from "@/types/map.type";
 
 import madring from "@/data/fallback-maps/madring.json";
 import sepang from "@/data/fallback-maps/sepang.json";
+import austinPitLane from "@/data/pit-lanes/austin.json";
+import mexicoPitLane from "@/data/pit-lanes/mexico.json";
 import singaporePitLane from "@/data/pit-lanes/singapore.json";
+import suzukaPitLane from "@/data/pit-lanes/suzuka.json";
 
 // Circuits MultiViewer has no outline for yet, built locally in MultiViewer's format. They are only
 // used when its API has nothing for a circuit, so its own map takes over as soon as it publishes one.
@@ -29,8 +32,15 @@ export const fallbackMap = (circuitKey: number): Map | null => FALLBACK_MAPS[cir
 // MultiViewer's (= the live dots') coordinate frame.
 //
 // Singapore (key 61): from every car in 2026 FP1, lane 735 m, median 2.8 m from the cars' points.
+// Austin (key 9): from every car in 2025 US GP FP1, lane 715 m, median 2.0 m from the cars' points. The entry
+// leaves the inside of the Turn 20 hairpin, so it is fitted along the lane rather than offset from the outline.
+// Suzuka (key 46): from every car in the 2026 Japanese GP race, lane 845 m, median 2.0 m from the cars' points,
+// fitted along the lane like Austin's.
 const PIT_LANES: Record<number, NonNullable<Map["pitLane"]>> = {
+	9: austinPitLane,
+	46: suzukaPitLane,
 	61: singaporePitLane,
+	65: mexicoPitLane,
 };
 
 export const withPitLane = (map: Map): Map =>

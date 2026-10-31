@@ -2,8 +2,9 @@
 // would touch, they are laid side by side instead, in the left-to-right order of their dots, and each
 // keeps a tail back to its own dot. Sizes are in track-map units (a dot's radius is 120).
 
-// Three lines: time into the lap ("1:32.45"), the projected lap time, then the speed.
-export const BUBBLE_WIDTH = 1200;
+// Three lines: time into the lap ("1:32.45"), the projected lap time with its gap to the best lap
+// ("1:31.80 −0.37"), then the speed. Wide enough for the projected line, the longest of the three.
+export const BUBBLE_WIDTH = 1750;
 export const BUBBLE_HEIGHT = 1100;
 // Centre-to-centre spacing of the lines.
 export const BUBBLE_LINE_PITCH = 340;

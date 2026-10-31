@@ -19,7 +19,7 @@ export default function Qualifying() {
 			? []
 			: Object.values(driversTiming.Lines)
 					.filter((d) => !d.PitOut && !d.InPit && !d.KnockedOut && !d.Stopped) // no out, no pit, no stopped
-					.filter((d) => d.Sectors.every((sec) => !sec.Segments.find((s) => s.Status === 2064))) // no in/out lap
+					.filter((d) => d.Sectors.every((sec) => !sec.Segments?.find((s) => s.Status === 2064))) // no in/out lap
 					.filter((d) => d.Sectors.map((s) => s.PersonalFastest).includes(true)); // has any personal fastest
 
 	const sessionPart = driversTiming?.SessionPart;

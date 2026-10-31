@@ -1,0 +1,596 @@
+{
+ "2": {
+  "circuitName": "Silverstone",
+  "rawToMercator": [
+   0.162259834,
+   -0.00366324,
+   0.00366324,
+   0.162259834,
+   -113639.484078973,
+   6812299.232412159
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09976,
+  "medianMissM": 2.71,
+  "p90MissM": 7.49,
+  "good": true,
+  "seedQuery": "Silverstone Circuit",
+  "osmLines": 149
+ },
+ "4": {
+  "circuitName": "Hungaroring",
+  "rawToMercator": [
+   0.147848637,
+   0.003261119,
+   -0.003261119,
+   0.147848637,
+   2142961.145187223,
+   6037086.767994164
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09974,
+  "medianMissM": 1.72,
+  "p90MissM": 4.92,
+  "good": true,
+  "seedQuery": "Hungaroring",
+  "osmLines": 23
+ },
+ "6": {
+  "circuitName": "Imola",
+  "rawToMercator": [
+   0.137804767,
+   -0.003978033,
+   0.003978033,
+   0.137804767,
+   1304768.024281432,
+   5519038.142567232
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.0986,
+  "medianMissM": 2.66,
+  "p90MissM": 7.69,
+  "good": true,
+  "seedQuery": "Autodromo Internazionale Enzo e Dino Ferrari",
+  "osmLines": 138
+ },
+ "7": {
+  "circuitName": "Spa-Francorchamps",
+  "rawToMercator": [
+   0.156744213,
+   -0.006750085,
+   0.006750085,
+   0.156744213,
+   664186.021272716,
+   6523183.062999751
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09993,
+  "medianMissM": 1.53,
+  "p90MissM": 4.4,
+  "good": true,
+  "seedQuery": "Circuit de Spa-Francorchamps",
+  "osmLines": 35
+ },
+ "9": {
+  "circuitName": "Austin",
+  "rawToMercator": [
+   0.115216222,
+   -0.000645215,
+   0.000645215,
+   0.115216222,
+   -10869312.017479993,
+   3520753.139650808
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09965,
+  "medianMissM": 1.76,
+  "p90MissM": 6.2,
+  "good": true,
+  "seedQuery": "Circuit of the Americas",
+  "osmLines": 40
+ },
+ "10": {
+  "circuitName": "Melbourne",
+  "rawToMercator": [
+   0.126511835,
+   -0.002897498,
+   0.002897498,
+   0.126511835,
+   16138006.67993789,
+   -4558078.781515796
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09993,
+  "medianMissM": 2.1,
+  "p90MissM": 4.99,
+  "good": true,
+  "seedQuery": "Albert Park Lake, Melbourne",
+  "osmLines": 31
+ },
+ "12": {
+  "circuitName": "Sepang",
+  "rawToMercator": [
+   0.100228871,
+   0.001985191,
+   -0.001985191,
+   0.100228871,
+   11325339.817267884,
+   307538.090299731
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10013,
+  "medianMissM": 1.74,
+  "p90MissM": 4.85,
+  "good": true,
+  "seedQuery": "Sepang International Circuit",
+  "osmLines": 34
+ },
+ "14": {
+  "circuitName": "Interlagos",
+  "rawToMercator": [
+   0.108142704,
+   0.00208883,
+   -0.00208883,
+   0.108142704,
+   -5198237.129594133,
+   -2716747.173038511
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09904,
+  "medianMissM": 1.57,
+  "p90MissM": 5.1,
+  "good": true,
+  "seedQuery": "Autódromo José Carlos Pace",
+  "osmLines": 54
+ },
+ "15": {
+  "circuitName": "Catalunya",
+  "rawToMercator": [
+   0.133837718,
+   0.001355828,
+   -0.001355828,
+   0.133837718,
+   251601.740717773,
+   5096928.743055155
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10014,
+  "medianMissM": 1.7,
+  "p90MissM": 4.39,
+  "good": true,
+  "seedQuery": "Circuit de Barcelona-Catalunya",
+  "osmLines": 51
+ },
+ "19": {
+  "circuitName": "Spielberg",
+  "rawToMercator": [
+   0.1462921,
+   -0.000451128,
+   0.000451128,
+   0.1462921,
+   1643622.547664603,
+   5978271.440379229
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09936,
+  "medianMissM": 1.34,
+  "p90MissM": 5.19,
+  "good": true,
+  "seedQuery": "Red Bull Ring",
+  "osmLines": 47
+ },
+ "22": {
+  "circuitName": "Monte Carlo",
+  "rawToMercator": [
+   0.138709323,
+   0.003161512,
+   -0.003161512,
+   0.138709323,
+   827170.784583757,
+   5425494.068548828
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10024,
+  "medianMissM": 1.09,
+  "p90MissM": 5.48,
+  "good": true,
+  "seedQuery": "Monte-Carlo, Monaco",
+  "osmLines": 52
+ },
+ "23": {
+  "circuitName": "Montreal",
+  "rawToMercator": [
+   0.142620605,
+   -0.003092054,
+   0.003092054,
+   0.142620605,
+   -8184987.91297285,
+   5700457.031755176
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09999,
+  "medianMissM": 1.5,
+  "p90MissM": 5.0,
+  "good": true,
+  "seedQuery": "Circuit Gilles-Villeneuve",
+  "osmLines": 2
+ },
+ "28": {
+  "circuitName": "Paul Ricard",
+  "rawToMercator": [
+   0.136756032,
+   -0.004903557,
+   0.004903557,
+   0.136756032,
+   644726.382047672,
+   5350638.496200313
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09967,
+  "medianMissM": 2.26,
+  "p90MissM": 5.94,
+  "good": true,
+  "seedQuery": "Circuit Paul Ricard",
+  "osmLines": 129
+ },
+ "34": {
+  "circuitName": "Hockenheim",
+  "rawToMercator": [
+   0.155986171,
+   -0.004072923,
+   0.004072923,
+   0.155986171,
+   953660.131978844,
+   6330982.764133532
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10169,
+  "medianMissM": 5.66,
+  "p90MissM": 19.51,
+  "good": true,
+  "seedQuery": "Hockenheimring",
+  "osmLines": 45
+ },
+ "39": {
+  "circuitName": "Monza",
+  "rawToMercator": [
+   0.143180229,
+   -0.000302142,
+   0.000302142,
+   0.143180229,
+   1033337.031981134,
+   5719197.763835249
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10014,
+  "medianMissM": 1.8,
+  "p90MissM": 4.88,
+  "good": true,
+  "seedQuery": "Autodromo Nazionale di Monza",
+  "osmLines": 51
+ },
+ "46": {
+  "circuitName": "Suzuka",
+  "rawToMercator": [
+   0.122096795,
+   -0.00207888,
+   0.00207888,
+   0.122096795,
+   15199231.507861026,
+   4142885.715213711
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10022,
+  "medianMissM": 0.93,
+  "p90MissM": 3.38,
+  "good": true,
+  "seedQuery": "Suzuka Circuit",
+  "osmLines": 69
+ },
+ "49": {
+  "circuitName": "Shanghai",
+  "rawToMercator": [
+   0.117240357,
+   0.001650522,
+   -0.001650522,
+   0.117240357,
+   13494382.755605267,
+   3676857.650284223
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10014,
+  "medianMissM": 0.62,
+  "p90MissM": 1.86,
+  "good": true,
+  "seedQuery": "Shanghai International Circuit",
+  "osmLines": 17
+ },
+ "55": {
+  "circuitName": "Zandvoort",
+  "rawToMercator": [
+   0.163692089,
+   -0.002325783,
+   0.002325783,
+   0.163692089,
+   505409.178201564,
+   6870183.492959697
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09991,
+  "medianMissM": 1.73,
+  "p90MissM": 4.71,
+  "good": true,
+  "seedQuery": "Circuit Zandvoort",
+  "osmLines": 28
+ },
+ "59": {
+  "circuitName": "Istanbul",
+  "rawToMercator": [
+   0.132413851,
+   -0.003554863,
+   0.003554863,
+   0.132413851,
+   3273164.138377766,
+   5005428.000195137
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10003,
+  "medianMissM": 1.79,
+  "p90MissM": 4.9,
+  "good": true,
+  "seedQuery": "Istanbul Park",
+  "osmLines": 4
+ },
+ "61": {
+  "circuitName": "Singapore",
+  "rawToMercator": [
+   0.099995857,
+   0.000767583,
+   -0.000767583,
+   0.099995857,
+   11562018.493068518,
+   143737.600790502
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09997,
+  "medianMissM": 2.89,
+  "p90MissM": 7.72,
+  "good": true,
+  "seedQuery": "Marina Bay Street Circuit",
+  "osmLines": 106
+ },
+ "63": {
+  "circuitName": "Sakhir",
+  "rawToMercator": [
+   0.110972145,
+   0.000899532,
+   -0.000899532,
+   0.110972145,
+   5622837.260825736,
+   3002703.590891185
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09972,
+  "medianMissM": 1.15,
+  "p90MissM": 2.96,
+  "good": true,
+  "seedQuery": "Bahrain International Circuit",
+  "osmLines": 41
+ },
+ "65": {
+  "circuitName": "Mexico City",
+  "rawToMercator": [
+   0.106321299,
+   0.001405977,
+   -0.001405977,
+   0.106321299,
+   -11031159.432268726,
+   2202699.261285725
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10029,
+  "medianMissM": 1.37,
+  "p90MissM": 3.77,
+  "good": true,
+  "seedQuery": "Autódromo Hermanos Rodríguez",
+  "osmLines": 36
+ },
+ "70": {
+  "circuitName": "Yas Marina Circuit",
+  "rawToMercator": [
+   0.109831789,
+   0.004607192,
+   -0.004607192,
+   0.109831789,
+   6078471.304314134,
+   2810521.986136565
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10005,
+  "medianMissM": 1.62,
+  "p90MissM": 8.2,
+  "good": true,
+  "seedQuery": "Yas Marina Circuit",
+  "osmLines": 49
+ },
+ "72": {
+  "circuitName": "Nürburgring",
+  "rawToMercator": [
+   0.156284445,
+   0.004514833,
+   -0.004514833,
+   0.156284445,
+   773125.14872851,
+   6504612.551571489
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09981,
+  "medianMissM": 2.06,
+  "p90MissM": 4.62,
+  "good": true,
+  "seedQuery": "Nürburgring",
+  "osmLines": 87
+ },
+ "144": {
+  "circuitName": "Baku",
+  "rawToMercator": [
+   0.131146955,
+   0.001797763,
+   -0.001797763,
+   0.131146955,
+   5549358.244871034,
+   4920259.183150954
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09992,
+  "medianMissM": 1.52,
+  "p90MissM": 4.54,
+  "good": true,
+  "seedQuery": "Baku City Circuit",
+  "osmLines": 60
+ },
+ "146": {
+  "circuitName": "Mugello",
+  "rawToMercator": [
+   0.139672446,
+   -0.003552815,
+   0.003552815,
+   0.139672446,
+   1266036.492837267,
+   5465194.008691492
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10051,
+  "medianMissM": 2.25,
+  "p90MissM": 5.57,
+  "good": true,
+  "seedQuery": "Autodromo Internazionale del Mugello",
+  "osmLines": 98
+ },
+ "147": {
+  "circuitName": "Algarve International Circuit",
+  "rawToMercator": [
+   0.125643019,
+   -8.6304e-05,
+   8.6304e-05,
+   0.125643019,
+   -960454.360602581,
+   4471019.190155365
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10004,
+  "medianMissM": 2.32,
+  "p90MissM": 6.13,
+  "good": true,
+  "seedQuery": "Autódromo Internacional do Algarve",
+  "osmLines": 96
+ },
+ "148": {
+  "circuitName": "Sakhir Outer Track",
+  "rawToMercator": [
+   0.111530067,
+   0.000807762,
+   -0.000807762,
+   0.111530067,
+   5622834.29878056,
+   3002705.454573352
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10022,
+  "medianMissM": 1.21,
+  "p90MissM": 3.03,
+  "good": true,
+  "seedQuery": "Bahrain International Circuit",
+  "osmLines": 41
+ },
+ "149": {
+  "circuitName": "Jeddah",
+  "rawToMercator": [
+   0.108024023,
+   1.4007e-05,
+   -1.4007e-05,
+   0.108024023,
+   4353314.914197827,
+   2467214.184184089
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10042,
+  "medianMissM": 2.5,
+  "p90MissM": 5.08,
+  "good": true,
+  "seedQuery": "Jeddah Corniche Circuit",
+  "osmLines": 17
+ },
+ "150": {
+  "circuitName": "Losail",
+  "rawToMercator": [
+   0.111195028,
+   0.00023796,
+   -0.00023796,
+   0.111195028,
+   5727608.897831487,
+   2935810.51566415
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10037,
+  "medianMissM": 1.02,
+  "p90MissM": 2.61,
+  "good": true,
+  "seedQuery": "Lusail International Circuit",
+  "osmLines": 21
+ },
+ "151": {
+  "circuitName": "Miami",
+  "rawToMercator": [
+   0.111302884,
+   -0.000462739,
+   0.000462739,
+   0.111302884,
+   -8932318.126718735,
+   2994079.281660099
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10008,
+  "medianMissM": 2.19,
+  "p90MissM": 5.17,
+  "good": true,
+  "seedQuery": "Hard Rock Stadium",
+  "osmLines": 11
+ },
+ "152": {
+  "circuitName": "Las Vegas",
+  "rawToMercator": [
+   0.124562142,
+   -0.002118011,
+   0.002118011,
+   0.124562142,
+   -12820056.572685562,
+   4315687.576308751
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.10063,
+  "medianMissM": 2.21,
+  "p90MissM": 11.35,
+  "good": true,
+  "seedQuery": "Sphere, Las Vegas",
+  "osmLines": 90
+ },
+ "153": {
+  "circuitName": "Madring",
+  "rawToMercator": [
+   0.131423382,
+   -0.000317583,
+   0.000317583,
+   0.131423382,
+   -402422.878545712,
+   4934482.966958517
+  ],
+  "mirrored": false,
+  "groundMetresPerUnit": 0.09999,
+  "medianMissM": 2.77,
+  "p90MissM": 126.3,
+  "good": true,
+  "seedQuery": "IFEMA Madrid",
+  "osmLines": 8
+ }
+}

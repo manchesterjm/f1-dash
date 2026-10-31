@@ -6,6 +6,7 @@ import type { ExtrapolatedClock } from "@/types/state.type";
 
 import { merge } from "@/lib/merge";
 import { CarMotion, DEFAULT_TIMING_WINDOW } from "@/lib/replay/carMotion";
+import type { ReplayPlace } from "@/lib/replay/replayBookmark";
 import { PlaybackClock } from "@/lib/replay/playbackClock";
 import { firstUpdateFrom, stateAt } from "@/lib/replay/stateAt";
 import type { ReplaySession } from "@/lib/replay/replaySession";
@@ -40,20 +41,27 @@ const formatDuration = (seconds: number) => {
 	return `${pad(Math.floor(whole / 3600))}:${pad(Math.floor((whole % 3600) / 60))}:${pad(whole % 60)}`;
 };
 
-export const useReplayPlayer = (session: ReplaySession, target: ReplayTarget) => {
+// `resume` starts playback from a saved place instead of the lead-in; `onPlace` hears every move.
+export const useReplayPlayer = (
+	session: ReplaySession,
+	target: ReplayTarget,
+	resume: ReplayPlace | null = null,
+	onPlace?: (place: ReplayPlace) => void,
+) => {
 	const recordingStartMs = Date.parse(session.recordingStartUtc);
 	const leadIn = Math.max(0, (session.runningSpans[0]?.[0] ?? LEAD_IN_SECONDS) - LEAD_IN_SECONDS);
+	const startAt = Math.max(0, Math.min(resume?.offset ?? leadIn, session.duration));
 
 	const clockRef = useRef(new PlaybackClock(1));
-	const anchorRef = useRef<Anchor>({ wallMs: 0, offset: leadIn });
-	const playingRef = useRef(false);
+	const anchorRef = useRef<Anchor>({ wallMs: 0, offset: startAt });
+	const playingRef = useRef(resume?.playing ?? false);
 	const speedRef = useRef(1);
 	const nextIndexRef = useRef(0);
 	const sessionClockRef = useRef<ExtrapolatedClock | null>(null);
 	const lastClockSentRef = useRef(0);
 
-	const [offset, setOffset] = useState(leadIn);
-	const [playing, setPlaying] = useState(false);
+	const [offset, setOffset] = useState(startAt);
+	const [playing, setPlaying] = useState(resume?.playing ?? false);
 	const [speed, setSpeedState] = useState(1);
 
 	const currentOffset = (): number => {
@@ -155,7 +163,7 @@ export const useReplayPlayer = (session: ReplaySession, target: ReplayTarget) =>
 	};
 
 	useEffect(() => {
-		jumpTo(leadIn);
+		jumpTo(startAt);
 		const { attach, detach } = useCarMotionStore.getState();
 		attach(
 			CarMotion.fromSession(session, timingWindowFromAddress()),
@@ -173,6 +181,9 @@ export const useReplayPlayer = (session: ReplaySession, target: ReplayTarget) =>
 		// The session is fixed for this player's lifetime; the handlers above only read refs.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [session]);
+
+	// offset moves every UI refresh while playing, so the owner always holds a place at most 250 ms old.
+	useEffect(() => onPlace?.({ offset, playing }), [offset, playing]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	return { offset, playing, speed, play, pause, seek, setSpeed };
 };
