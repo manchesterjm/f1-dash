@@ -33,6 +33,7 @@ const ROSTER: Record<string, Omit<RosterDriver, "code">> = {
 	HAD: { name: "Isack HADJAR", flag: "🇫🇷", country: "France" },
 	HAM: { name: "Lewis HAMILTON", flag: "🇬🇧", country: "United Kingdom" },
 	HAR: { name: "Brendon HARTLEY", flag: "🇳🇿", country: "New Zealand" },
+	HIR: { name: "Ryo HIRAKAWA", flag: "🇯🇵", country: "Japan" },
 	HUL: { name: "Nico HULKENBERG", flag: "🇩🇪", country: "Germany" },
 	KUB: { name: "Robert KUBICA", flag: "🇵🇱", country: "Poland" },
 	KVY: { name: "Daniil KVYAT", flag: "🇷🇺", country: "Russia" },
